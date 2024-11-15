@@ -1,0 +1,72 @@
+version: '3'
+services:
+  enterprise-api-php:
+    container_name: enterprise-api-php
+    hostname: enterprise-api-php
+    restart: unless-stopped
+    build:
+      context: ./
+    volumes:
+      - .:/var/www/html
+    networks:
+      docker-enterprise-api-network:
+        ipv4_address: 172.20.0.2
+    depends_on:
+      - enterprise-api-redis
+      - enterprise-api-mysql
+
+  enterprise-api-nginx:
+    image: nginx:1.23.1-alpine
+    container_name: enterprise-api-nginx
+    restart: unless-stopped
+    tty: true
+    ports:
+      - "80:80"
+    volumes:
+      - ./:/var/www/html
+      - ./nginx/:/etc/nginx/conf.d/
+    networks:
+      docker-enterprise-api-network:
+        ipv4_address: 172.20.0.3
+
+  enterprise-api-mysql:
+    image: mysql:latest
+    container_name: enterprise-api-mysql
+    restart: unless-stopped
+    build:
+      context: .
+    ports:
+      - "3307:3306"
+    networks:
+      docker-enterprise-api-network:
+        ipv4_address: 172.20.0.4
+    environment:
+      MYSQL_USER: enterprise
+      MYSQL_PASSWORD: secret
+      MYSQL_DATABASE: enterprise_db
+      MYSQL_ROOT_PASSWORD: secret
+    volumes:
+      - mysql-data:/var/lib/mysql
+    hostname: enterprise-api-mysql
+
+  enterprise-api-redis:
+    image: redis:7.0.4-alpine3.16
+    container_name: enterprise-api-redis
+    restart: unless-stopped
+    ports:
+      - "6380:6379"
+    tty: true
+    networks:
+      docker-enterprise-api-network:
+        ipv4_address: 172.20.0.5
+    hostname: enterprise-api-redis
+
+networks:
+  docker-enterprise-api-network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/24
+volumes:
+  mysql-data:
